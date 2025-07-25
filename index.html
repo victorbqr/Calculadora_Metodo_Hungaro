@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Método Húngaro - Maximización y Minimización</title>
+    <title>Método Húngaro - Solución Completa</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -100,11 +100,21 @@
         .matrix-container {
             overflow-x: auto;
         }
+        .zero {
+            background-color: #ffeb3b;
+            font-weight: bold;
+        }
+        .covered {
+            background-color: #ffcdd2;
+        }
+        .line {
+            background-color: #b3e5fc;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Método Húngaro</h1>
+        <h1>Método Húngaro - Solución Completa</h1>
         
         <div class="tabs">
             <button class="tab active" onclick="openTab(event, 'maximizacion')">Maximización</button>
@@ -236,21 +246,30 @@
         }
         
         // Función para mostrar una matriz en formato HTML
-        function displayMatrix(matrix, title) {
+        function displayMatrix(matrix, title, highlights = [], lines = { rows: [], cols: [] }) {
             let html = `<div class="step"><h3>${title}</h3><table>`;
             
             // Encabezados de columnas
             html += '<tr><th></th>';
             for (let j = 0; j < matrix[0].length; j++) {
-                html += `<th>Col ${j+1}</th>`;
+                const isColCovered = lines.cols.includes(j);
+                html += `<th class="${isColCovered ? 'line' : ''}">Col ${j+1}</th>`;
             }
             html += '</tr>';
             
             // Filas de datos
             for (let i = 0; i < matrix.length; i++) {
-                html += `<tr><th>Fila ${i+1}</th>`;
+                const isRowCovered = lines.rows.includes(i);
+                html += `<tr><th class="${isRowCovered ? 'line' : ''}">Fila ${i+1}</th>`;
                 for (let j = 0; j < matrix[i].length; j++) {
-                    html += `<td>${matrix[i][j]}</td>`;
+                    const isHighlighted = highlights.some(([hi, hj]) => hi === i && hj === j);
+                    const isCovered = isRowCovered || lines.cols.includes(j);
+                    const cellClass = [
+                        isHighlighted ? 'zero' : '',
+                        isCovered ? 'covered' : ''
+                    ].filter(Boolean).join(' ');
+                    
+                    html += `<td class="${cellClass}">${matrix[i][j]}</td>`;
                 }
                 html += '</tr>';
             }
@@ -259,7 +278,7 @@
             return html;
         }
         
-        // Implementación del método húngaro para maximización
+        // Implementación completa del método húngaro para maximización
         function solveHungarianMax() {
             const stepsContainer = document.getElementById('steps-max');
             stepsContainer.innerHTML = '';
@@ -272,31 +291,10 @@
             const costMatrix = originalMatrix.map(row => row.map(val => maxValue - val));
             stepsContainer.innerHTML += displayMatrix(costMatrix, "Paso 1: Matriz de costos equivalente (para minimizar)");
             
-            // Paso 2: Reducción por filas
-            const rowReduced = costMatrix.map(row => {
-                const min = Math.min(...row);
-                return row.map(val => val - min);
-            });
-            stepsContainer.innerHTML += displayMatrix(rowReduced, "Paso 2: Reducción por filas");
+            // Resolver el problema de minimización
+            const assignment = solveHungarian(costMatrix, stepsContainer, "max");
             
-            // Paso 3: Reducción por columnas
-            const colReduced = JSON.parse(JSON.stringify(rowReduced));
-            for (let j = 0; j < colReduced[0].length; j++) {
-                const column = colReduced.map(row => row[j]);
-                const min = Math.min(...column);
-                for (let i = 0; i < colReduced.length; i++) {
-                    colReduced[i][j] -= min;
-                }
-            }
-            stepsContainer.innerHTML += displayMatrix(colReduced, "Paso 3: Reducción por columnas");
-            
-            // Paso 4: Asignación óptima (simplificado - en realidad necesitarías implementar el algoritmo completo)
-            // Para este ejemplo, usaremos un enfoque simplificado que asume que los ceros ya forman una asignación completa
-            
-            // Encontrar asignación óptima (esto es una simplificación)
-            const assignment = findOptimalAssignment(colReduced);
-            
-            // Mostrar resultados
+            // Mostrar resultados con la matriz original
             let resultHTML = '<div class="result"><h3>Asignación óptima encontrada</h3><ul>';
             let totalUtility = 0;
             
@@ -310,7 +308,7 @@
             stepsContainer.innerHTML += resultHTML;
         }
         
-        // Implementación del método húngaro para minimización
+        // Implementación completa del método húngaro para minimización
         function solveHungarianMin() {
             const stepsContainer = document.getElementById('steps-min');
             stepsContainer.innerHTML = '';
@@ -318,26 +316,8 @@
             const originalMatrix = getMatrix('min');
             stepsContainer.innerHTML += displayMatrix(originalMatrix, "Matriz de costos original");
             
-            // Paso 1: Reducción por filas
-            const rowReduced = originalMatrix.map(row => {
-                const min = Math.min(...row);
-                return row.map(val => val - min);
-            });
-            stepsContainer.innerHTML += displayMatrix(rowReduced, "Paso 1: Reducción por filas");
-            
-            // Paso 2: Reducción por columnas
-            const colReduced = JSON.parse(JSON.stringify(rowReduced));
-            for (let j = 0; j < colReduced[0].length; j++) {
-                const column = colReduced.map(row => row[j]);
-                const min = Math.min(...column);
-                for (let i = 0; i < colReduced.length; i++) {
-                    colReduced[i][j] -= min;
-                }
-            }
-            stepsContainer.innerHTML += displayMatrix(colReduced, "Paso 2: Reducción por columnas");
-            
-            // Paso 3: Asignación óptima (simplificado)
-            const assignment = findOptimalAssignment(colReduced);
+            // Resolver el problema de minimización directamente
+            const assignment = solveHungarian(originalMatrix, stepsContainer, "min");
             
             // Mostrar resultados
             let resultHTML = '<div class="result"><h3>Asignación óptima encontrada</h3><ul>';
@@ -353,25 +333,104 @@
             stepsContainer.innerHTML += resultHTML;
         }
         
-        // Función simplificada para encontrar asignación óptima (para propósitos de demostración)
-        function findOptimalAssignment(matrix) {
+        // Implementación completa del método húngaro
+        function solveHungarian(matrix, stepsContainer, type) {
+            let stepMatrix = matrix.map(row => [...row]);
+            const size = Math.max(matrix.length, matrix[0].length);
+            
+            // Paso 1: Reducción por filas
+            for (let i = 0; i < stepMatrix.length; i++) {
+                const min = Math.min(...stepMatrix[i]);
+                stepMatrix[i] = stepMatrix[i].map(val => val - min);
+            }
+            stepsContainer.innerHTML += displayMatrix(stepMatrix, `Paso 1${type === 'max' ? ' (continuación)' : ''}: Reducción por filas`);
+            
+            // Paso 2: Reducción por columnas
+            for (let j = 0; j < stepMatrix[0].length; j++) {
+                const column = stepMatrix.map(row => row[j]);
+                const min = Math.min(...column);
+                for (let i = 0; i < stepMatrix.length; i++) {
+                    stepMatrix[i][j] -= min;
+                }
+            }
+            stepsContainer.innerHTML += displayMatrix(stepMatrix, "Paso 2: Reducción por columnas");
+            
+            // Paso 3: Encontrar asignación óptima
+            let assignment = [];
+            let lines = { rows: [], cols: [] };
+            
+            // Repetir hasta encontrar una asignación completa
+            while (true) {
+                // Encontrar la asignación máxima
+                assignment = findMaxAssignment(stepMatrix);
+                
+                if (assignment.length === size) {
+                    break; // Asignación completa encontrada
+                }
+                
+                // Paso 4: Cubrir los ceros con el mínimo número de líneas
+                lines = coverZeros(stepMatrix, assignment);
+                stepsContainer.innerHTML += displayMatrix(stepMatrix, "Paso 3: Ceros cubiertos con líneas", [], lines);
+                
+                // Paso 5: Crear nuevos ceros
+                const minUncovered = findMinUncovered(stepMatrix, lines);
+                
+                // Ajustar la matriz
+                for (let i = 0; i < stepMatrix.length; i++) {
+                    for (let j = 0; j < stepMatrix[i].length; j++) {
+                        if (!lines.rows.includes(i) && !lines.cols.includes(j)) {
+                            stepMatrix[i][j] -= minUncovered;
+                        } else if (lines.rows.includes(i) && lines.cols.includes(j)) {
+                            stepMatrix[i][j] += minUncovered;
+                        }
+                    }
+                }
+                
+                stepsContainer.innerHTML += displayMatrix(stepMatrix, "Paso 4: Matriz ajustada con nuevos ceros");
+            }
+            
+            return assignment;
+        }
+        
+        // Encontrar asignación máxima (puede no ser completa)
+        function findMaxAssignment(matrix) {
             const assignment = [];
             const assignedRows = new Set();
             const assignedCols = new Set();
             
-            // Primera pasada: asignar los únicos ceros en filas/columnas
+            // Primero asignar los únicos ceros en filas/columnas
             for (let i = 0; i < matrix.length; i++) {
+                const zerosInRow = [];
                 for (let j = 0; j < matrix[i].length; j++) {
-                    if (matrix[i][j] === 0 && !assignedRows.has(i) && !assignedCols.has(j)) {
-                        assignment.push([i, j]);
-                        assignedRows.add(i);
-                        assignedCols.add(j);
-                        break;
+                    if (matrix[i][j] === 0 && !assignedCols.has(j)) {
+                        zerosInRow.push(j);
                     }
+                }
+                if (zerosInRow.length === 1 && !assignedRows.has(i)) {
+                    const j = zerosInRow[0];
+                    assignment.push([i, j]);
+                    assignedRows.add(i);
+                    assignedCols.add(j);
                 }
             }
             
-            // Segunda pasada: asignar los ceros restantes
+            // Luego asignar los únicos ceros en columnas
+            for (let j = 0; j < matrix[0].length; j++) {
+                const zerosInCol = [];
+                for (let i = 0; i < matrix.length; i++) {
+                    if (matrix[i][j] === 0 && !assignedRows.has(i)) {
+                        zerosInCol.push(i);
+                    }
+                }
+                if (zerosInCol.length === 1 && !assignedCols.has(j)) {
+                    const i = zerosInCol[0];
+                    assignment.push([i, j]);
+                    assignedRows.add(i);
+                    assignedCols.add(j);
+                }
+            }
+            
+            // Finalmente asignar los ceros restantes
             for (let i = 0; i < matrix.length; i++) {
                 if (assignedRows.has(i)) continue;
                 for (let j = 0; j < matrix[i].length; j++) {
@@ -385,6 +444,71 @@
             }
             
             return assignment;
+        }
+        
+        // Cubrir todos los ceros con el mínimo número de líneas
+        function coverZeros(matrix, assignment) {
+            const lines = { rows: [], cols: [] };
+            const markedRows = new Set();
+            const markedCols = new Set();
+            
+            // Marcar columnas sin asignaciones
+            const assignedCols = new Set(assignment.map(([_, j]) => j));
+            for (let j = 0; j < matrix[0].length; j++) {
+                if (!assignedCols.has(j)) {
+                    markedCols.add(j);
+                }
+            }
+            
+            // Marcar filas y columnas alternativamente
+            let changed;
+            do {
+                changed = false;
+                
+                // Marcar filas con ceros en columnas marcadas
+                for (let i = 0; i < matrix.length; i++) {
+                    if (markedRows.has(i)) continue;
+                    for (let j of markedCols) {
+                        if (matrix[i][j] === 0) {
+                            markedRows.add(i);
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Marcar columnas con asignaciones en filas marcadas
+                for (const [i, j] of assignment) {
+                    if (markedRows.has(i) && !markedCols.has(j)) {
+                        markedCols.add(j);
+                        changed = true;
+                    }
+                }
+            } while (changed);
+            
+            // Las líneas son: columnas no marcadas y filas marcadas
+            lines.cols = Array.from({ length: matrix[0].length }, (_, j) => j)
+                .filter(j => !markedCols.has(j));
+            lines.rows = Array.from(markedRows);
+            
+            return lines;
+        }
+        
+        // Encontrar el mínimo valor no cubierto
+        function findMinUncovered(matrix, lines) {
+            let min = Infinity;
+            
+            for (let i = 0; i < matrix.length; i++) {
+                if (lines.rows.includes(i)) continue;
+                for (let j = 0; j < matrix[i].length; j++) {
+                    if (lines.cols.includes(j)) continue;
+                    if (matrix[i][j] < min) {
+                        min = matrix[i][j];
+                    }
+                }
+            }
+            
+            return min;
         }
         
         // Crear matrices por defecto al cargar la página
